@@ -29,17 +29,17 @@ sudo add-apt-repository -y ppa:deadsnakes/ppa && sudo apt update
 sudo apt install -y python3.9 python3.9-venv python3.9-dev python3.9-distutils, build-essential
 ```
 
-3. create a virtual env
+3. Create a virtual environment
 ```bash
 python3.9 -m venv .venv
 ```
 
-4. activate venv
+4. Activate the virtual environment
 ```bash
 source .venv/bin/activate
 ```
 
-5. Compile and install this package and the dependecies
+5. Compile and install the package and its dependencies
 ```bash
 pip install .
 ```
@@ -54,7 +54,9 @@ The datasets used in the experiments can be downloaded using the script `cache_t
 python cache_tableshift.py
 ```
 
-This script will download and store the necessary datasets for the experiments. Some datasets require credentialized download. See [Gardner _et al._ (2023)](https://arxiv.org/abs/2312.07577) for more infomation.
+This script will download and store the necessary datasets for the experiments. Some datasets require credentialed download. See [Gardner _et al._ (2023)](https://arxiv.org/abs/2312.07577) for more information.
+
+**Note:** Some datasets are large and may take significant time to download. Ensure you have a stable internet connection and enough disk space before proceeding.
 
 ---
 

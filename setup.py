@@ -12,8 +12,6 @@ extensions = [
     Extension(
         '*',
         ['qipm/*.pyx'],
-        # libraries=['gsl', 'gslcblas'],
-        # library_dirs=['/usr/local/lib'],
         define_macros=[(
             'NPY_NO_DEPRECATED_API', 
             'NPY_1_7_API_VERSION'
@@ -25,7 +23,7 @@ extensions = [
 ]
 
 setup(
-    name='rfbs',
+    name='qipm',
     version='0.1',
     ext_modules=cythonize(
         extensions,
@@ -38,7 +36,6 @@ setup(
     ),
     include_dirs=[
         numpy.get_include(),
-        # '/usr/local/include'
     ],
     zip_safe=False,
     install_requires=[
