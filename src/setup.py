@@ -1,7 +1,7 @@
 import numpy
 import sys
 from Cython.Build import cythonize
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 
 if sys.platform.startswith("win"):
     openmp_arg = '/openmp'
@@ -38,11 +38,14 @@ setup(
         numpy.get_include(),
     ],
     zip_safe=False,
+    packages=find_packages(),
     install_requires=[
         'numpy==1.23.5',
         'scikit-learn==1.5.1',
         'scipy==1.13.1',
         'tableshift @ git+https://github.com/ecostadelle/tableshift.git@necesssary_changes',
         'tabulate',
-    ]
+    ],
+    include_package_data=True,
+    package_data={'qipm': ['*.pxd', '*.pyx', '*.py']},
 )
