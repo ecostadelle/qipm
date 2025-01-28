@@ -8,7 +8,8 @@ from ._classes import (
     DecisionTreeClassifier,
 )
 
-from .qipm import _qipm, _aprf, _ipm, plot_transition_feat_relevance
+from .qipm import _qipm, _aprf, _ipm
+from .dataviz import plot_transition_feat_relevance
 from ._forest import RandomForestClassifier, _get_n_samples_bootstrap
 from ._criterion import Criterion
 from ._splitter import Splitter
