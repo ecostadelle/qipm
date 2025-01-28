@@ -5,9 +5,17 @@ from sklearn.metrics import (accuracy_score, f1_score,
                              recall_score, precision_score)
 from sklearn.ensemble import RandomForestClassifier as SKRandomForestClassifier
 from qipm import RandomForestClassifier as BSRandomForestClassifier
-from qipm import AVALIABLE_DATASETS, get_qipm
-from time import time
+from qipm import AVALIABLE_DATASETS, get_qipm, get_ipm
+from tableshift import get_dataset
 from scipy.stats import wilcoxon
+
+import logging
+logging.basicConfig(
+    level=logging.INFO,  # Define o nível mínimo de log
+    format='%(asctime)s - %(levelname)s - %(message)s',  # Formato da saída do log
+    datefmt='%Y-%m-%d %H:%M:%S',  # Formato da data/hora
+)
+info = logging.info
 
 class DatasetHandler:
     """
@@ -16,12 +24,23 @@ class DatasetHandler:
     def __init__(self, base_path):
         self.base_path = base_path
 
-    def load_data(self, dataset_name, data_type):
-        file_path = os.path.join(self.base_path, f"{dataset_name}_{data_type}.feather")
+    def load_data(self, dataset_name, partition):
+        filename = f"{dataset_name}_{partition}.feather"
+        file_path = os.path.join(self.base_path, filename)
         df = pd.read_feather(file_path)
-        X = df.values[:, :-1]
-        y = df.values[:, -1]
-        return X, y
+        X = df.iloc[:, :-1]
+        y = df.iloc[:, -1]
+        return X.values, y.values
+    
+    def load_tableshift(self, dataset_name, partition):
+        dset = get_dataset(
+            dataset_name, 
+            cache_dir="../tableshift/tmp", 
+            use_cached=True
+        )
+        
+        X, y, _, _ = dset.get_pandas(partition)
+        return X.values, y.values
 
 class ModelTrainer:
     """
@@ -57,11 +76,13 @@ class Evaluation:
     """
     Evaluates models and saves results.
     """
-    def __init__(self, filename):
+    def __init__(self, filename, zero_division=0, average='macro'):
         self.results = pd.DataFrame(AVALIABLE_DATASETS, 
                                     columns=['dataset', 'experiment']
                                     ).set_index('experiment')
         self.filename = filename
+        self.zero_division = zero_division
+        self.average = average
 
     def save_results(self):
         self.results.to_markdown(f'{self.filename}.md')
@@ -71,12 +92,16 @@ class Evaluation:
         self.results.loc[experiment, metric] = value
         self.save_results()
 
-    def compute_metrics(self, y_true, y_pred, zero_division):
+    def compute_metrics(self, y_true, y_pred):
+        kwargs = {
+            "zero_division": self.zero_division, 
+            "average": self.average
+        }
         return {
             'accuracy': accuracy_score(y_true, y_pred),
-            'f1': f1_score(y_true, y_pred, zero_division=zero_division, average='macro'),
-            'precision': precision_score(y_true, y_pred, zero_division=zero_division, average='macro'),
-            'recall': recall_score(y_true, y_pred, average='macro')
+            'f1': f1_score(y_true, y_pred, **kwargs),
+            'precision': precision_score(y_true, y_pred, **kwargs),
+            'recall': recall_score(y_true, y_pred, **kwargs)
         }
 
     def generate_latex_report(self, evaluate, title):
@@ -103,11 +128,11 @@ class Evaluation:
 
             for _, row in df_ev.iterrows():
                 dataset = row['dataset']
-                id_score = row[metrics[0]]
-                baseline_ood = row[metrics[1]]
-                ood_qipm = row[metrics[2]]
+                id_score = f"{row[metrics[0]]:.4f}"[1:]
+                baseline_ood = f"{row[metrics[1]]:.4f}"[1:]
+                ood_qipm = f"{row[metrics[2]]:.4f}"[1:]
 
-                latex_content.append(f"{dataset} & {id_score:.2f} & {baseline_ood:.2f} & {ood_qipm:.2f} \\\\")
+                latex_content.append(f"{dataset} & {id_score} & {baseline_ood} & {ood_qipm} \\\\")
 
             latex_content.append("\\bottomrule")
 
@@ -132,9 +157,8 @@ def main():
     dataset_handler = DatasetHandler(path)
     evaluator = Evaluation(filename)
 
-    for dataset_name, experiment in AVALIABLE_DATASETS:
-        print(f"Processing dataset: {dataset_name}")
-        start_time = time()
+    for dataset_name, experiment in [AVALIABLE_DATASETS[4]]:
+        info(f"Processing dataset: {dataset_name}")
 
         X_train, y_train = dataset_handler.load_data(experiment, "train")
         max_samples = 0.1 if experiment == 'acspubcov' else None
@@ -142,7 +166,7 @@ def main():
 
         # Train base model
         base_model = trainer.train_base_model(X_train, y_train)
-        print("Base model trained")
+        info("Base model trained")
 
         # Load test data
         X_id, y_id = dataset_handler.load_data(experiment, "id_test")
@@ -152,8 +176,8 @@ def main():
         y_hat_id = base_model.predict(X_id)
         y_hat_ood = base_model.predict(X_ood)
 
-        metrics_id = evaluator.compute_metrics(y_id, y_hat_id, zero_division)
-        metrics_ood = evaluator.compute_metrics(y_ood, y_hat_ood, zero_division)
+        metrics_id = evaluator.compute_metrics(y_id, y_hat_id)
+        metrics_ood = evaluator.compute_metrics(y_ood, y_hat_ood)
 
         for metric, value in metrics_id.items():
             evaluator.update_results(experiment, f'{metric}_id', value)
@@ -162,16 +186,21 @@ def main():
             evaluator.update_results(experiment, f'{metric}_ood', value)
 
         # Compute QIPM
-        acc_qipm = get_qipm(
-            forest=base_model, X_A=X_train, y_A=y_train, X_B=X_ood,
-            wheighted_by='accuracy', normalize=True, n_jobs=-1
-        )
+        
+        kwargs = {
+            "forest": base_model, 
+            "X_A": X_train, 
+            "y_A": y_train, 
+            "X_B": X_ood,
+            "normalize": True, 
+            "n_jobs": -1
+        }
+        
+        acc_qipm = get_qipm(weighted_by='accuracy', **kwargs)
+        f1_qipm = get_qipm(weighted_by='fmeasure', **kwargs)
 
-        f1_qipm = get_qipm(
-            forest=base_model, X_A=X_train, y_A=y_train, X_B=X_ood,
-            wheighted_by='fmeasure', normalize=True, n_jobs=-1
-        )
-
+        id_ipm = get_ipm(base_model, X_id)
+        ood_ipm = []
         # Train adapted models
         strategies = [acc_qipm, f1_qipm]
 
@@ -179,11 +208,14 @@ def main():
             adapted_model = trainer.train_adapted_model(X_train, y_train, feature_bias=strategy)
             y_hat_ood_adapted = adapted_model.predict(X_ood)
 
-            metrics_adapted = evaluator.compute_metrics(y_ood, y_hat_ood_adapted, zero_division)
+            metrics_adapted = evaluator.compute_metrics(y_ood, y_hat_ood_adapted)
             for metric, value in metrics_adapted.items():
                 evaluator.update_results(experiment, f'{metric}_s{i}', value)
+                
+            ood_ipm.append(get_ipm(adapted_model, X_ood))
+            info(f"Strategy {i} finished")
 
-        print(f"Finished dataset {dataset_name} in {int(time() - start_time)} seconds")
+        info(f"Finished dataset: {dataset_name}")
 
     # Generate LaTeX reports
     evaluate = {
