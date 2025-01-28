@@ -107,7 +107,9 @@ cdef inline intp_t rand_pdf(uint32_t* random_state, intp_t low,
 
     # If all bias values are zero, choose an index uniformly at random
     if cumulative_sum == 0.0:
-        return rand_int(low, high, random_state)
+        # return rand_int(low, high, random_state)
+        # filter features with p=0
+        return -20
 
     # Generate a random value in the range [0, cumulative_sum]
     random_value = rand_uniform(0, cumulative_sum, random_state)
@@ -477,6 +479,10 @@ cdef inline int node_split_best(
         else:
             # Draw a feature at random uniform distribution
             f_j = rand_int(n_drawn_constants, f_i - n_found_constants, random_state)
+
+        # filter features with p=0
+        if f_j < -10:
+            break
 
         if f_j < n_known_constants:
             # f_j in the interval [n_drawn_constants, n_known_constants[
@@ -854,6 +860,11 @@ cdef inline int node_split_random(
         else:
             # Draw a feature at random following a given probability distribution function (PDF)
             f_j = rand_pdf(random_state, n_drawn_constants, f_i - n_found_constants, features, feature_bias)
+
+        # filter features with p=0
+        if f_j < -10:
+            break
+
 
         if f_j < n_known_constants:
             # f_j in the interval [n_drawn_constants, n_known_constants[
