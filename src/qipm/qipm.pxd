@@ -20,7 +20,7 @@ cdef intp_t rand_pdf(
     const float64_t[:] feature_bias
 ) noexcept nogil
 
-cpdef cnp.ndarray ipm(object decision_tree, float64_t[:, :] X)
+cpdef cnp.ndarray _ipm(object decision_tree, float64_t[:, :] X)
 
 cdef cnp.ndarray get_confusion_matrices(object decision_tree, float64_t[:,:] X, float64_t[:] y, intp_t[:] index)
 

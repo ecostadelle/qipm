@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd 
+
 from sklearn.utils.parallel import Parallel, delayed
 
 from ._classes import (
@@ -6,10 +8,12 @@ from ._classes import (
     DecisionTreeClassifier,
 )
 
-from .qipm import _qipm, _aprf, ipm as _ipm
+from .qipm import _qipm, _aprf, _ipm
 from ._forest import RandomForestClassifier, _get_n_samples_bootstrap
 from ._criterion import Criterion
 from ._splitter import Splitter
+
+from typing import Union
 
 
 LIGHTWEIGHT_DATASETS = [
@@ -120,7 +124,6 @@ def _parallel_qipm(forest: RandomForestClassifier, X_A: np.ndarray,
         np.ndarray: QIPM values for each feature.
     """
     max_samples = _get_n_samples_bootstrap(X_A.shape[0], forest.max_samples)
-    print(max_samples)
     result = Parallel(n_jobs=n_jobs, prefer='threads')(
         delayed(_qipm)
         (
@@ -142,8 +145,21 @@ def _parallel_qipm(forest: RandomForestClassifier, X_A: np.ndarray,
     return result
 
 
-def get_qipm(forest: RandomForestClassifier, X_A: np.ndarray,
-             y_A: np.ndarray, X_B: np.ndarray, wheighted_by = 'none', 
+def check_data(data: Union[pd.DataFrame, pd.Series, np.ndarray]) -> np.ndarray:
+    if isinstance(data, pd.DataFrame) or isinstance(data, pd.Series):
+        return data.values.astype(np.float64)
+    elif isinstance(data, np.ndarray):
+        return data.astype(np.float64)
+    else:
+        print(data.dtype)
+        raise TypeError('Input data must be a Pandas DataFrame, Series or a NumPy ndarray')
+
+
+def get_qipm(forest: RandomForestClassifier, 
+             X_A: Union[pd.DataFrame, np.ndarray],
+             y_A: Union[pd.DataFrame, np.ndarray], 
+             X_B: Union[pd.DataFrame, np.ndarray], 
+             weighted_by = 'none', 
              normalize = True, n_jobs: int = -1):
     """
     Compute the Quality-weighted Intervention in Prediction Measure (QIPM).
@@ -153,13 +169,16 @@ def get_qipm(forest: RandomForestClassifier, X_A: np.ndarray,
         X_A (np.ndarray): Input data (in-distribution).
         y_A (np.ndarray): Labels for X_A.
         X_B (np.ndarray): Input data (out-of-distribution).
-        wheighted_by (str, optional): Metric for weighting ('accuracy', 'precision', 'recall', 'fmeasure', or 'none'). Defaults to 'none'.
+        weighted_by (str, optional): Metric for weighting ('accuracy', 'precision', 'recall', 'fmeasure', or 'none'). Defaults to 'none'.
         normalize (bool, optional): Whether to normalize QIPM values. Defaults to True.
         n_jobs (int, optional): Number of parallel jobs. Defaults to -1.
 
     Returns:
         np.ndarray: QIPM values for each feature.
     """
+    X_A = check_data(X_A)
+    y_A = check_data(y_A)
+    X_B = check_data(X_B)
 
     metric = {
         'accuracy': 0, 
@@ -169,8 +188,55 @@ def get_qipm(forest: RandomForestClassifier, X_A: np.ndarray,
         'none': 4
     }
 
-    return _parallel_qipm(forest, X_A, y_A, X_B, metric[wheighted_by], 
+    return _parallel_qipm(forest, X_A, y_A, X_B, metric[weighted_by], 
                           normalize, n_jobs)
+
+
+def _parallel_ipm(forest: RandomForestClassifier, X: np.ndarray, n_jobs: int):
+    """
+    Parallel computation of IPM for a RandomForestClassifier.
+
+    Args:
+        forest (RandomForestClassifier): Trained RandomForestClassifier.
+        X (np.ndarray): Input data.
+        n_jobs (int): Number of parallel jobs.
+
+    Returns:
+        np.ndarray: IPM values for each feature.
+    """
+    result = Parallel(n_jobs=n_jobs, prefer='threads')(
+        delayed(_ipm)
+        (
+            decision_tree,
+            X,
+        ) for decision_tree in forest.estimators_
+    )
+
+    result = np.mean(result, axis=0)
+
+    # L1-normalization is necessary because some trees can got qipm equal zero
+    result /= result.sum()
+
+    return result
+
+
+def get_ipm(forest: RandomForestClassifier, 
+            X: Union[pd.DataFrame, np.ndarray],
+            n_jobs: int = -1):
+    """
+    Compute the Quality-weighted Intervention in Prediction Measure (QIPM).
+
+    Args:
+        forest (RandomForestClassifier): Trained RandomForestClassifier.
+        X (np.ndarray): Input data (in-distribution).
+        n_jobs (int, optional): Number of parallel jobs. Defaults to -1.
+
+    Returns:
+        np.ndarray: IPM values for each feature.
+    """
+    X = check_data(X)
+    return _parallel_ipm(forest, X, n_jobs)
+
 
 def aprf(cj: np.ndarray, beta: float = 1.0, average_macro: bool = True):
     """

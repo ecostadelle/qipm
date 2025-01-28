@@ -94,7 +94,7 @@ cdef inline intp_t rand_pdf(uint32_t* random_state, intp_t low,
         )
 
 
-cpdef cnp.ndarray ipm(object decision_tree, float64_t[:,:] X): 
+cpdef cnp.ndarray _ipm(object decision_tree, float64_t[:,:] X): 
     """
     Computes the Importance in Prediction Measure (IPM) for each 
     feature in the dataset based on the given decision tree.
@@ -661,7 +661,7 @@ cpdef cnp.ndarray _qipm(object decision_tree, float64_t[:,:] X_A,
     oob_idx = get_oob_idx(decision_tree, n, max_samples)
     C = get_confusion_matrices(decision_tree, X_A, y_A, oob_idx)
     # get original ipm for and quality weighting
-    qipm = ipm(decision_tree, X_B)
+    qipm = _ipm(decision_tree, X_B)
     with nogil:
         for j in range(m):
 
