@@ -82,7 +82,7 @@ If you use this code in your work, please cite the corresponding paper:
 ```
 @article{costadelle2025qipm,
   author    = {Ewerton Luiz Costadelle and Marcelo Rodrigues de Holanda Maia and Alexandre Plastino and Alex Alves Freitas},
-  title     = {Quality-weighted Intervention in Prediction Measure: a novel approach that considers relevant aspects when coping with dataset shift problem},
+  title     = {A New Approach to Handle Data Shift Based on Feature Importance Measurement},
   journal   = {Under submission},
   year      = {2025}
 }
