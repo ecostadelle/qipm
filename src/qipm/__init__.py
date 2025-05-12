@@ -9,7 +9,7 @@ from ._classes import (
 )
 
 from .qipm import _qipm, _aprf, _ipm
-from .dataviz import plot_transition_feat_relevance
+from .dataviz import plot_transition_feat_relevance, join_and_plot
 from ._forest import RandomForestClassifier, _get_n_samples_bootstrap
 from ._criterion import Criterion
 from ._splitter import Splitter
@@ -294,5 +294,6 @@ __all__ = [
     "get_qipm",
     "aprf",
     "ipm",
-    "plot_transition_feat_relevance"
+    "plot_transition_feat_relevance",
+    "join_and_plot"
 ]

@@ -7,10 +7,10 @@ ctypedef unsigned int uint32_t
 
 # Metric indices for QIPM computation.
 cdef:
-    intp_t ACCURACY
-    intp_t PRECISION
-    intp_t RECALL
-    intp_t FMEASURE
+    intp_t ACCURACY = 0
+    intp_t PRECISION = 1
+    intp_t RECALL = 2
+    intp_t FMEASURE = 3
 
 cdef intp_t rand_pdf(
     uint32_t* random_state, 
