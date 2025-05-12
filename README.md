@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 6. Compile and install the package
 ```bash
-pip install .
+pip install src/
 ```
 
 ---
