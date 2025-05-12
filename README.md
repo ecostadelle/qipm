@@ -2,7 +2,7 @@
 
 This repository contains the implementation of the experiments described in the paper:
 
-> **Quality-weighted Intervention in Prediction Measure: a novel approach that considers relevant aspects when coping with dataset shift problem**  
+> **A New Approach to Handle Data Shift Based on Feature Importance Measurement**  
 > Ewerton Luiz Costadelle, Marcelo Rodrigues de Holanda Maia, Alexandre Plastino, Alex Alves Freitas  
 
 ## Overview
