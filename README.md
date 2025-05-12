@@ -39,7 +39,12 @@ python3.9 -m venv .venv
 source .venv/bin/activate
 ```
 
-5. Compile and install the package and its dependencies
+5. Install the package dependencies
+```bash
+pip install -r requirements.txt
+```
+
+6. Compile and install the package
 ```bash
 pip install .
 ```
